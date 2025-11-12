@@ -1,49 +1,45 @@
 package fw;
 
-import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.MalformedURLException;
 import java.net.URL;
 
 public class FrontServlet extends HttpServlet {
 
     @Override
-    protected void service(HttpServletRequest req, HttpServletResponse resp)
+    protected void service(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        findResource(req, resp);
+        if (ressourceExist(request)) {
+            customServe(request, response);
+        } else {
+            defaultServe(request, response);
+        }
     }
 
-    private void findResource(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
-
+    private boolean ressourceExist(HttpServletRequest req) throws MalformedURLException {
         String path = req.getRequestURI().substring(req.getContextPath().length());
-        URL resource = getServletContext().getResource(path);
+        URL ressouce = getServletContext().getResource(path);
+        return ressouce != null;
+    }
 
-        
-        boolean resourceExist = (resource != null);
+    private void customServe(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        getServletContext().getNamedDispatcher("default").forward(request, response);
+    }
 
-        if (resourceExist && !path.endsWith(".class")) {
-            getServletContext().getNamedDispatcher("default").forward(req, resp);
-            return;
-        }
-
-
-        resp.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = resp.getWriter()) {
-            out.println("<html>");
-            out.println("<head><title>FrontServlet</title></head>");
-            out.println("<body>");
-            out.println("<h1>Réponse FrontServlet</h1>");
-            out.println("<p>Ressource demandée : " + path + "</p>");
-            if (!resourceExist) {
-                out.println("<p style='color:red'>Ressource introuvable</p>");
-            }
-            out.println("</body>");
-            out.println("</html>");
+    private void defaultServe(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        response.setContentType("text/html;charset=UTF-8");
+        try (PrintWriter out = response.getWriter()) {
+            out.println("<html><head><title>FrontServlet</title></head><body>");
+            out.println("<h1>FrontServlet - Page par défaut</h1>");
+            out.println("<p>Méthode HTTP : " + request.getMethod() + "</p>");
+            out.println("<p>URL : " + request.getRequestURL() + "</p>");
+            out.println("</body></html>");
         }
     }
 }
