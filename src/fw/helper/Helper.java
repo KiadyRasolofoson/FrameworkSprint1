@@ -50,8 +50,6 @@ public class Helper {
         }
     }
 
-    
-
     private boolean containsJavaFiles(File directory) {
         File[] files = directory.listFiles();
         if (files == null)
@@ -73,11 +71,10 @@ public class Helper {
         for (String packageName : packageNames) {
             Reflections reflections = new Reflections(packageName);
             Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Controller.class);
-            for (Class<?> clazz : classes) {
-                Method[] methods = clazz.getDeclaredMethods();
+            for (Class<?> clazz : classes) {   HandUrlHandler         Method[] methods = clazz.getDeclaredMethods();
                 for (Method method : methods) {
-                    if (method.isAnnotationPresent(UrlHandler.class)) {
-                        UrlHandler annotation = method.getAnnotation(UrlHandler.class);
+                    if (method.isAnnotationPresent(MyUrl.class)) {
+                        MyUrl annotation = method.getAnnotation(MyUrl.class);
                         String url = annotation.value();
                         valiny.put(url, new CMethod(clazz, method));
                     }
