@@ -1,4 +1,4 @@
-package fw.core;
+package  core;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
@@ -15,9 +15,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import fw.helper.CMethod;
-import fw.helper.Helper;
-import fw.util.ModelView;
+import  helper.CMethod;
+import  helper.Helper;
+import  util.ModelView;
 
 public class FrontServlet extends HttpServlet {
 
