@@ -8,10 +8,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import annotation.json.MyJson;
 import helper.Helper;
 import util.CMethod;
 import util.ModelView;
@@ -96,6 +104,72 @@ public class FrontServlet extends HttpServlet {
         return requestMethod.equals(methodHttp);
     }
 
+    private void rahaMyJson(Method method, Object instance, Object[] arguments, HttpServletResponse response)
+            throws IOException {
+        try {
+
+            Object result = method.invoke(instance, arguments);
+
+            Map<String, Object> responseMap = new HashMap<>();
+            responseMap.put("success", true);
+            responseMap.put("timestamp", new Date());
+
+            if (result instanceof List) {
+                List<?> list = (List<?>) result;
+                responseMap.put("data", list);
+                responseMap.put("count", list.size());
+            } else if (result instanceof Collection) {
+                Collection<?> collection = (Collection<?>) result;
+                List<?> list = new ArrayList<>(collection);
+                responseMap.put("data", list);
+                responseMap.put("count", list.size());
+            } else {
+                responseMap.put("data", result);
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(responseMap);
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            PrintWriter out = response.getWriter();
+            out.print(json);
+            out.flush();
+
+        } catch (Exception e) {
+            Throwable cause = e;
+            if (e instanceof InvocationTargetException && e.getCause() != null) {
+                cause = e.getCause();
+            }
+
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            String errorCode = "INTERNAL_ERROR";
+            String clientMessage = "Une erreur interne est survenue.";
+
+            if (cause instanceof IllegalArgumentException) {
+                errorCode = "INVALID_ARGUMENT";
+                clientMessage = cause.getMessage();
+            }
+
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", errorCode);
+            errorResponse.put("message", clientMessage);
+            errorResponse.put("timestamp", new Date());
+
+            ObjectMapper mapper = new ObjectMapper();
+            String errorJson = mapper.writeValueAsString(errorResponse);
+
+            PrintWriter out = response.getWriter();
+            out.print(errorJson);
+            out.flush();
+        }
+    }
+
     private void processExactMatch(HttpServletRequest request, HttpServletResponse response,
             String url, String originalUrl, CMethod cm)
             throws Exception {
@@ -105,15 +179,34 @@ public class FrontServlet extends HttpServlet {
         Object[] arguments = h.getArgumentsWithValue(method, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
         Class<?> returnType = method.getReturnType();
-        if (returnType.equals(String.class)) {
-            Object result = method.invoke(instance, arguments);
-            sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
-        } else if (returnType.equals(ModelView.class)) {
-            ModelView result = (ModelView) method.invoke(instance, arguments);
-            forwardToView(request, response, result);
+        if (method.isAnnotationPresent(MyJson.class)) {
+            if (Void.TYPE.equals(returnType) || Void.class.equals(returnType)) {
+                sendUnsupportedTypeResponse(response, url);
+                return;
+            }
+            try {
+                this.rahaMyJson(method, instance, arguments, response);
+            } catch (Exception e) {
+                sendJsonSerializationErrorResponse(response, url, e);
+            }
         } else {
-            sendUnsupportedTypeResponse(response, url);
+            if (returnType.equals(String.class)) {
+                Object result = method.invoke(instance, arguments);
+                sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
+            } else if (returnType.equals(ModelView.class)) {
+                ModelView result = (ModelView) method.invoke(instance, arguments);
+                forwardToView(request, response, result);
+            } else {
+                sendUnsupportedTypeResponse(response, url);
+            }
         }
+    }
+
+    private void sendJsonSerializationErrorResponse(HttpServletResponse response, String url, Exception e)
+            throws IOException {
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        response.setContentType("text/plain;charset=UTF-8");
+        response.getWriter().write("Failed to serialize JSON response for '" + url + "': " + e.getMessage());
     }
 
     private void processPatternMatch(HttpServletRequest request, HttpServletResponse response,
