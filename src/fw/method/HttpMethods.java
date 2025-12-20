@@ -1,4 +1,4 @@
-package  helper;
+package method;
 
 public class HttpMethods {
     public static final String GET = "GET";

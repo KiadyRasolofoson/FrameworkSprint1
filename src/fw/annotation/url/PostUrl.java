@@ -1,10 +1,11 @@
-package  annotation.url;
+package annotation.url;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import  helper.HttpMethods;
+
+import method.HttpMethods;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
