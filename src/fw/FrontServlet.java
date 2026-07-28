@@ -11,6 +11,7 @@ import java.net.URL;
 
 public class FrontServlet extends HttpServlet {
 
+    
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
